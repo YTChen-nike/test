@@ -5,7 +5,7 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <netinet/in.h>
-#include <aepa/inet.h>
+#include <arpa/inet.h>
 #include <pthread.h>
 #include <stdlib.h>
 
@@ -24,22 +24,22 @@ typedef struct _cli_info{
 int main()
 {
 	int listenfd, connectfd;
+	int opt = SO_REUSEADDR;
 	pthread_t pid;
 	cli_info *info;
 	struct sockaddr_in ser_addr;
 	struct sockaddr_in cli_addr;
-	int sin_size;
+	socklen_t sin_size;
 
 	listenfd = socket(AF_INET, SOCK_STREAM, 0);
 	if(listenfd == -1){
-		peeror("craete socket failed!");
+		perror("craete socket failed!");
 		goto EXIT;
 	}
 
-	int opt = SO_REUSEADDR;
 	setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
 
-	memset(ser_addr, 0, sizeof(ser_addr));
+	memset(&ser_addr, 0, sizeof(ser_addr));
 	ser_addr.sin_family = AF_INET;
 	ser_addr.sin_port = htons(PORT);
 	ser_addr.sin_addr.s_addr = htonl(INADDR_ANY);
@@ -57,7 +57,7 @@ int main()
 	sin_size = sizeof(struct sockaddr_in);
 
 	while(1){
-		connectfd = accept(listenfd, (struct sockaddr*)&cli_addr, sin_size);
+		connectfd = accept(listenfd, (struct sockaddr*)&cli_addr, &sin_size);
 		if(connectfd == -1){
 			perror("accept failed");
 			goto EXIT;
@@ -65,9 +65,9 @@ int main()
 
 		info = new cli_info;
 		info->connect_fd = connectfd;
-		strncpy(info->client_addr, cli_addr, sizeof(cli_addr));
+		memcpy(&info->client_addr, &cli_addr, sizeof(cli_addr));
 
-		if(pthread_create(&thread, NULL, start_routine, (void *)info)){
+		if(pthread_create(&pid, NULL, start_routine, (void *)info)){
 			perror("pthread_create error");
 			goto EXIT;
 		}
